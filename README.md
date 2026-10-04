@@ -191,7 +191,7 @@ Everything except "Generate regex" and the AI tutor works without a key. To turn
 |---|---|
 | `LLM_PROVIDER` | `gemini` (free), `groq` (free), `anthropic` or `openai` (also any OpenAI-compatible server via `LLM_BASE_URL`) |
 | `LLM_API_KEY` | your secret key. Never put it in the code. `.env` is in `.gitignore`, so it is never uploaded |
-| `LLM_MODEL` | optional. Defaults: `gemini-2.5-flash`, `llama-3.3-70b-versatile`, `claude-opus-5-5`, `gpt-4o-mini` |
+| `LLM_MODEL` | optional. Defaults: `gemini-3.8-flash`, `llama-3.3-70b-versatile`, `claude-opus-5-5`, `gpt-4o-mini` |
 | `LLM_BASE_URL` | optional, only for other OpenAI-compatible servers (e.g. Ollama) |
 
 ---

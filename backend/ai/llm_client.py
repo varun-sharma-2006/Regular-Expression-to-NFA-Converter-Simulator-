@@ -23,7 +23,7 @@ import os
 
 DEFAULT_MODELS = {
     "anthropic": "claude-opus-5-5",
-    "gemini": "gemini-2.5-flash",
+    "gemini": "gemini-3.8-flash",
     "groq": "llama-3.3-70b-versatile",
     "openai": "gpt-4o-mini",
 }
@@ -128,7 +128,9 @@ def _ask_openai_compatible(system_prompt: str, user_message: str, max_tokens: in
     import openai
 
     base_url = os.getenv("LLM_BASE_URL", "").strip() or PRESET_BASE_URLS.get(get_provider())
-    client = openai.OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=base_url)
+    # Only 1 automatic retry: free keys allow very few requests per minute,
+    # and every retry counts against that limit.
+    client = openai.OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=base_url, max_retries=1)
     try:
         response = client.chat.completions.create(
             model=get_model(),
@@ -140,11 +142,24 @@ def _ask_openai_compatible(system_prompt: str, user_message: str, max_tokens: in
         )
     except openai.AuthenticationError:
         raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
+    except openai.RateLimitError:
+        raise AIRequestError(
+            "Request limit reached. Free keys allow only a few AI requests per minute "
+            "(Gemini free tier: about 5). Wait one minute and try again."
+        )
+    except openai.InternalServerError:
+        raise AIRequestError("The AI service is busy right now (high demand). Try again in a moment.")
     except openai.APIConnectionError:
         raise AIRequestError("Could not reach the AI provider. Check LLM_BASE_URL / internet.")
     except openai.APIError as error:
         # Some providers (e.g. Gemini) report a wrong key as a generic 400 error.
         if "api key" in str(error).lower() or "api_key" in str(error).lower():
             raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
+        # Providers retire old models; say clearly how to pick another one.
+        if getattr(error, "status_code", None) == 404 or "not_found" in str(error).lower():
+            raise AIRequestError(
+                f"The model '{get_model()}' is not available for your key. Set LLM_MODEL in "
+                f"backend/.env to a current model name (see the provider's model list). Details: {error}"
+            )
         raise AIRequestError(f"AI provider error: {error}")
     return (response.choices[0].message.content or "").strip()
