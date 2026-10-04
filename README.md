@@ -173,13 +173,24 @@ python -m pytest -v
 - DFA → regex gives a regex proved equivalent to the original;
 - ∩, ∪ and − on 100 random pairs match the answer key.
 
-### AI configuration (`backend/.env`)
+### Enable the AI features (2 minutes, free)
+Everything except "Generate regex" and the AI tutor works without a key. To turn the AI on:
+
+1. Get a **free** API key: [Google Gemini](https://aistudio.google.com/apikey) or [Groq](https://console.groq.com/keys). Claude and OpenAI keys work too.
+2. Open `backend/.env`. `run.bat` creates it from `backend/.env.example` on the first run.
+3. Fill in two lines and save:
+   ```
+   LLM_PROVIDER=gemini
+   LLM_API_KEY=paste-your-key-here
+   ```
+4. In the app, click the **AI badge** (top right) → **Test connection**. You don't need to restart: the server re-reads `.env`.
+
 | Variable | Meaning |
 |---|---|
-| `LLM_PROVIDER` | `anthropic` (default) or `openai` (OpenAI and any OpenAI-compatible server: Groq, OpenRouter, Ollama…) |
-| `LLM_API_KEY` | your secret key. Never put it in the code. `.env` is in `.gitignore` |
-| `LLM_MODEL` | optional. Defaults: `claude-opus-5-5` (anthropic), `gpt-4o-mini` (openai) |
-| `LLM_BASE_URL` | optional, only for OpenAI-compatible servers |
+| `LLM_PROVIDER` | `gemini` (free), `groq` (free), `anthropic` or `openai` (also any OpenAI-compatible server via `LLM_BASE_URL`) |
+| `LLM_API_KEY` | your secret key. Never put it in the code. `.env` is in `.gitignore`, so it is never uploaded |
+| `LLM_MODEL` | optional. Defaults: `gemini-2.5-flash`, `llama-3.3-70b-versatile`, `claude-opus-5-5`, `gpt-4o-mini` |
+| `LLM_BASE_URL` | optional, only for other OpenAI-compatible servers (e.g. Ollama) |
 
 ---
 
@@ -252,3 +263,14 @@ Precedence: `* + ?` > concatenation > `|`. All binary operators are left-associa
 **10. "AI generates, automata verify".** The LLM's reply is never trusted. Our parser must accept it, otherwise the error is sent back for a retry. Then the verifier checks it on examples and proves equivalence with an expected regex.
 
 See **[docs/VIVA_GUIDE.md](docs/VIVA_GUIDE.md)** for the full worked example on `(a|b)*abb`, viva questions with answers, and the demo checklist.
+
+---
+
+## Authors
+
+Built as an Automata Theory course project (B.Tech CSE – AI) by:
+
+| | |
+|---|---|
+| **Varun Sharma** | [@varun-sharma-2006](https://github.com/varun-sharma-2006) |
+| **Yashika Garg** | [@yashikagarg16](https://github.com/yashikagarg16) |

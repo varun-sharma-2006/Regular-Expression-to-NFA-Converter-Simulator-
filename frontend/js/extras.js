@@ -274,6 +274,34 @@ async function copyShareLink() {
 }
 
 // ---------------------------------------------------------------------------
+// AI setup assistant
+// ---------------------------------------------------------------------------
+
+async function openAiDialog() {
+  await checkAiStatus();   // main.js: refreshes aiConfigured and the badge
+  $("ai-dialog-status").textContent = aiConfigured
+    ? "AI is configured: " + $("ai-status").textContent.replace("AI: ", "") + ". Use \"Test connection\" to check the key."
+    : "AI is not configured yet. Everything else works without it. Follow these 4 steps to enable it:";
+  $("ai-test-result").textContent = "";
+  $("ai-dialog").showModal();
+}
+
+async function testAiConnection() {
+  const result = $("ai-test-result");
+  await withBusyButton($("ai-test-button"), "Testing…", async () => {
+    try {
+      const answer = await postJson("/api/ai/test", {});
+      result.className = "test-ok";
+      result.textContent = `✔ Connected to ${answer.provider} (${answer.model}). The AI replied: "${answer.reply}"`;
+    } catch (error) {
+      result.className = "test-fail";
+      result.textContent = "✘ " + error.message;
+    }
+  });
+  checkAiStatus();
+}
+
+// ---------------------------------------------------------------------------
 // Wire up
 // ---------------------------------------------------------------------------
 
@@ -294,5 +322,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   $("theme-button").addEventListener("click", toggleTheme);
+  $("ai-status").addEventListener("click", openAiDialog);
+  $("ai-dialog-close").addEventListener("click", () => $("ai-dialog").close());
+  $("ai-test-button").addEventListener("click", testAiConnection);
   $("share-button").addEventListener("click", copyShareLink);
 });

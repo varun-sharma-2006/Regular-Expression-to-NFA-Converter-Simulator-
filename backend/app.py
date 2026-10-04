@@ -15,6 +15,7 @@ API routes (all POST routes take and return JSON):
     GET  /api/quiz?level=easy|medium|hard                       -> random practice quiz
     POST /api/verify            {regex, positives, negatives, expected}
     GET  /api/ai/status                                         -> is AI configured?
+    POST /api/ai/test                                           -> send a tiny test question to the AI
     POST /api/ai/nl-to-regex    {description}                   -> regex + full pipeline
     POST /api/ai/explain        {stage, data, regex}            -> explanation text
 
@@ -37,6 +38,7 @@ from ai.explainer import explain_step                       # noqa: E402
 from ai.llm_client import (                                   # noqa: E402
     AINotConfiguredError,
     AIRequestError,
+    ask_llm,
     get_model,
     get_provider,
     is_configured,
@@ -189,6 +191,28 @@ def verify():
     regex = read_regex(body)
     expected = str(body.get("expected", "") or "")[:MAX_REGEX_LENGTH]
     return jsonify(verify_regex(regex, read_list(body, "positives"), read_list(body, "negatives"), expected))
+
+
+def reload_ai_settings() -> None:
+    """
+    Re-read backend/.env, so a key pasted into it works WITHOUT restarting
+    the server. (Skipped in tests, which set their own environment.)
+    """
+    if not app.testing:
+        load_dotenv(BACKEND_DIR / ".env", override=True)
+
+
+@app.before_request
+def refresh_settings_for_ai_routes():
+    if request.path.startswith("/api/ai/"):
+        reload_ai_settings()
+
+
+@app.post("/api/ai/test")
+def ai_test():
+    """Check the key and the connection with a very small question."""
+    reply = ask_llm("You are a connection test. Reply with exactly the word OK.", "ping")
+    return jsonify({"ok": True, "provider": get_provider(), "model": get_model(), "reply": reply[:200]})
 
 
 @app.get("/api/ai/status")

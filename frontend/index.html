@@ -31,7 +31,7 @@
     <span>Automata<span class="gradient-text">AI</span></span>
   </a>
   <div class="header-actions">
-    <span id="ai-status" class="badge">AI: checking…</span>
+    <button id="ai-status" class="badge" title="AI settings and setup help">AI: checking…</button>
     <button class="secondary small" id="theme-button" title="Switch light / dark mode">◐ Theme</button>
   </div>
 </header>
@@ -428,6 +428,32 @@
   </section>
 
 </main>
+
+<!-- AI setup assistant (opened by clicking the AI badge) -->
+<dialog id="ai-dialog" class="dialog">
+  <div class="dialog-head">
+    <h3>Set up the AI features</h3>
+    <button class="secondary small" id="ai-dialog-close" aria-label="Close">✕</button>
+  </div>
+  <p id="ai-dialog-status" class="info"></p>
+  <ol class="setup-steps">
+    <li><b>Get a free API key</b> (no credit card):
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a> or
+      <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a>.
+      Claude and OpenAI keys work too.</li>
+    <li><b>Open the file</b> <code>backend/.env</code> in the project folder (Notepad or VS Code).</li>
+    <li><b>Fill in two lines</b> and save:
+      <pre>LLM_PROVIDER=gemini
+LLM_API_KEY=paste-your-key-here</pre>
+      Use <code>groq</code>, <code>anthropic</code> or <code>openai</code> for other providers.</li>
+    <li><b>Click "Test connection".</b> No restart needed: the server re-reads the file.</li>
+  </ol>
+  <p class="hint">Your key stays on your computer: <code>.env</code> is in <code>.gitignore</code> and is never uploaded to GitHub.</p>
+  <div class="controls">
+    <button id="ai-test-button">Test connection</button>
+    <span id="ai-test-result"></span>
+  </div>
+</dialog>
 
 <footer>
   <span class="brand-logo small" aria-hidden="true"></span>

@@ -592,6 +592,38 @@ tr.hover-row td { background: var(--info-bg); }
 .controls { display: flex; align-items: center; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
 #anim-status { color: var(--muted); font-size: 0.9rem; }
 
+/* ------------------------------------------------------- AI setup dialog */
+
+button.badge { cursor: pointer; box-shadow: none; color: inherit; font-weight: 500; }
+button.badge:hover { border-color: var(--primary); transform: none; box-shadow: none; filter: none; }
+button.badge.on { color: var(--accept); }
+button.badge.off { color: var(--muted); }
+
+.dialog {
+  width: min(620px, calc(100vw - 32px));
+  padding: 24px 26px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--card-solid);
+  color: var(--text);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+.dialog::backdrop { background: rgba(5, 6, 12, 0.6); backdrop-filter: blur(4px); }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; }
+.dialog-head h3 { margin: 0; font-size: 1.2rem; }
+.setup-steps { padding-left: 22px; }
+.setup-steps li { margin-bottom: 12px; }
+.setup-steps pre {
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-small);
+  background: var(--code-bg);
+  font-family: var(--mono);
+  font-size: 0.88rem;
+}
+.test-ok { color: var(--accept); }
+.test-fail { color: var(--reject); }
+
 /* ---------------------------------------------------------------- quiz */
 
 .quiz-list { padding-left: 22px; }

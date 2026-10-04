@@ -188,3 +188,26 @@ def test_builtin_explanation_for_operations_and_nfa_run(client):
     run = client.post("/api/simulate", json={"regex": "ab", "string": "ab", "automaton": "nfa"}).get_json()
     text = client.post("/api/ai/explain", json={"stage": "simulate", "data": {"input": "ab", **run}}).get_json()["explanation"]
     assert "active" in text
+
+
+def test_ai_test_route_without_key(client):
+    response = client.post("/api/ai/test")
+    assert response.status_code == 503
+
+
+def test_ai_test_route_with_fake_llm(client, monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "fake-key-for-tests")
+    monkeypatch.setattr(app_module, "ask_llm", lambda system, message: "OK")
+    data = client.post("/api/ai/test").get_json()
+    assert data["ok"] is True and data["reply"] == "OK"
+
+
+@pytest.mark.parametrize("provider", ["gemini", "groq"])
+def test_free_provider_presets(monkeypatch, provider):
+    from ai import llm_client
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_API_KEY", "x")
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    assert llm_client.is_configured()
+    assert llm_client.get_model() == llm_client.DEFAULT_MODELS[provider]
+    assert provider in llm_client.PRESET_BASE_URLS

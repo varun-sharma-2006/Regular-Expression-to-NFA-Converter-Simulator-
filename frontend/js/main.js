@@ -552,13 +552,14 @@ async function checkAiStatus() {
 }
 
 const AI_OFF_MESSAGE =
-  "AI is not configured. Add LLM_API_KEY to backend/.env and restart the server. " +
-  "Everything else works without it.";
+  "AI is not configured yet. Click the \"AI: not configured\" badge at the top right for a 4-step setup " +
+  "(free keys available). Everything else works without it.";
 
 async function generateFromEnglish() {
   const messageBox = $("nl-message");
   const description = $("nl-input").value.trim();
   show(messageBox);
+  await checkAiStatus();
   if (!aiConfigured) {
     messageBox.className = "error";
     messageBox.textContent = AI_OFF_MESSAGE;
