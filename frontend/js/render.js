@@ -66,11 +66,16 @@ function buildElements(automaton, labelPrefix) {
   return elements;
 }
 
-/** Choose dagre (nice left-to-right layered layout) if it loaded from the CDN. */
-function layoutOptions() {
+/**
+ * Choose dagre (nice layered layout) if it loaded from the CDN.
+ * Wide screens: left to right. Narrow screens (phones): top to bottom,
+ * so the automaton uses the tall space instead of shrinking to tiny nodes.
+ */
+function layoutOptions(container) {
+  const narrow = container && container.clientWidth < 600;
   // cytoscape-dagre registers itself with Cytoscape and defines this global.
   if (typeof cytoscapeDagre !== "undefined") {
-    return { name: "dagre", rankDir: "LR", nodeSep: 40, rankSep: 70, edgeSep: 20 };
+    return { name: "dagre", rankDir: narrow ? "TB" : "LR", nodeSep: 40, rankSep: narrow ? 50 : 70, edgeSep: 20 };
   }
   return { name: "breadthfirst", directed: true, spacingFactor: 1.2 };
 }
@@ -98,12 +103,12 @@ function graphStyle() {
         "border-width": 2,
         "border-color": border,
         "font-size": 14,
-        "font-family": "Consolas, monospace",
+        "font-family": "JetBrains Mono, Consolas, monospace",
         "color": nodeText,
       },
     },
     { selector: "node.start", style: { "background-color": startFill } },
-    { selector: "node.accept", style: { "border-style": "double", "border-width": 7 } },
+    { selector: "node.accept", style: { "border-style": "double", "border-width": 7, "border-color": cssVar("--accent") } },
     { selector: "node.dead", style: { "border-color": muted, "border-style": "dashed", "color": muted } },
     { selector: "node.start-marker", style: { "width": 2, "height": 2, "opacity": 0 } },
     {
@@ -116,7 +121,7 @@ function graphStyle() {
         "line-color": edge,
         "target-arrow-color": edge,
         "font-size": 14,
-        "font-family": "Consolas, monospace",
+        "font-family": "JetBrains Mono, Consolas, monospace",
         "color": nodeText,
         "text-background-color": labelBg,
         "text-background-opacity": 1,
@@ -155,7 +160,7 @@ function drawAutomaton(containerId, automaton, labelPrefix = "") {
     container: container,
     elements: buildElements(automaton, labelPrefix),
     style: graphStyle(),
-    layout: layoutOptions(),
+    layout: layoutOptions(container),
     wheelSensitivity: 0.3,
     maxZoom: 1.6,   // stops tiny automata from being blown up to giant size
     minZoom: 0.2,

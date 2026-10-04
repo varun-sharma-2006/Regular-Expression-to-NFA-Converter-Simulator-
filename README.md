@@ -1,9 +1,20 @@
-# AutomataAI – AI-Assisted Regular Expression to Minimized DFA Simulator
+<div align="center">
 
-> **AI generates, automata verify.**
+# AutomataAI
 
-![tests](https://github.com/OWNER/REPO/actions/workflows/tests.yml/badge.svg)
-<!-- After pushing to GitHub, replace OWNER/REPO above with your username and repository name. -->
+### AI-Assisted Regular Expression → ε-NFA → DFA → Minimized DFA Simulator
+
+**AI generates, automata verify.**
+
+[![tests](https://github.com/varun-sharma-2006/Regular-Expression-to-NFA-Converter-Simulator-/actions/workflows/tests.yml/badge.svg)](https://github.com/varun-sharma-2006/Regular-Expression-to-NFA-Converter-Simulator-/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white)
+![Cytoscape.js](https://img.shields.io/badge/graphs-Cytoscape.js-7c5cff)
+![Tests](https://img.shields.io/badge/tests-945%20passing-22c55e)
+
+<img src="docs/screenshots/hero-dark.png" alt="AutomataAI home screen (dark mode)" width="100%">
+
+</div>
 
 A web app that converts a regular expression, step by step, into an ε-NFA (Thompson's construction), a DFA (subset construction, and also directly with the followpos method), a minimized DFA (table-filling), and back into a regex (state elimination). You can test strings with animations on the DFA or the ε-NFA, combine languages (∩ ∪ − ⊕ complement), answer questions about a language, and practise with a quiz. An LLM can turn plain-English descriptions into regexes, and the automata algorithms **verify** whether the AI's regex is actually correct.
 
@@ -42,7 +53,47 @@ All automata algorithms are written by hand in pure Python. The project uses no 
 ### Tools
 - **Export:** every graph as PNG, every table as CSV or LaTeX (ready for your report)
 - **Light/dark theme** (follows your system; ◐ button to switch)
-- **Works on phones** (responsive layout)
+- **Works on phones** (responsive layout; graphs switch to a top-to-bottom layout)
+
+---
+
+## Screenshots
+
+### Watch the ε-NFA being built, one Thompson rule at a time
+<img src="docs/screenshots/build-nfa.gif" alt="Animated: the ε-NFA is built rule by rule" width="100%">
+
+### Step-by-step string testing on the minimized DFA
+<img src="docs/screenshots/string-test.gif" alt="Animated: testing the string aabb on the minimized DFA" width="100%">
+
+### Part A – Automata simulator
+
+| | |
+|:---:|:---:|
+| <img src="docs/screenshots/01-input.png" alt="Regex input"><br>**1 · Input** with examples and shareable link | <img src="docs/screenshots/02-postfix.png" alt="Shunting-yard table"><br>**2 · Postfix**: the shunting-yard table |
+| <img src="docs/screenshots/03-epsilon-nfa.png" alt="Thompson ε-NFA"><br>**3 · ε-NFA**: Thompson's construction | <img src="docs/screenshots/04-dfa-subset.png" alt="Subset construction"><br>**4 · DFA**: subset construction |
+| <img src="docs/screenshots/05-direct-dfa.png" alt="Direct DFA with followpos"><br>**5 · Direct DFA**: syntax tree + followpos | <img src="docs/screenshots/06-minimized-dfa.png" alt="Table-filling minimization"><br>**6 · Minimized DFA**: table-filling |
+| <img src="docs/screenshots/07-dfa-to-regex.png" alt="State elimination"><br>**7 · DFA → Regex**: state elimination, proved equivalent | <img src="docs/screenshots/08-properties.png" alt="Language properties"><br>**8 · Properties**: finite? infinite? shortest strings |
+| <img src="docs/screenshots/09-tester-nfa.png" alt="NFA simulation"><br>**9 · Tester on the ε-NFA**: the set of active states | <img src="docs/screenshots/hover-nfa-states.png" alt="Hover link"><br>**Hover a DFA state** → its NFA states light up |
+
+### Part B – AI features
+
+| | |
+|:---:|:---:|
+| <img src="docs/screenshots/10-nl-to-regex.png" alt="Natural language to regex"><br>**10 · English → Regex** (validated by our parser) | <img src="docs/screenshots/11-verifier.png" alt="Regex verifier"><br>**11 · Verifier**: example table + counterexample |
+| <img src="docs/screenshots/explain-step.png" alt="Explain this step"><br>**Explain this step** (works without an API key) | |
+
+### Part C – Language operations and practice
+
+| | |
+|:---:|:---:|
+| <img src="docs/screenshots/12-operations-intersection.png" alt="Intersection with product automaton"><br>**12 · L1 ∩ L2** with the product automaton | <img src="docs/screenshots/12-operations-complement.png" alt="Complement"><br>**Complement** of a* over {a, b} |
+| <img src="docs/screenshots/13-quiz.png" alt="Practice quiz"><br>**13 · Practice quiz**, checked automatically | |
+
+### Light mode and phones
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/hero-light.png" alt="Light mode"><br>**Light mode** | <img src="docs/screenshots/06-minimized-dfa-light.png" alt="Minimized DFA in light mode"><br>**Light mode** tables and graphs | <img src="docs/screenshots/mobile-graph.png" alt="Phone layout" width="260"><br>**Phone**: top-to-bottom graphs |
 
 ---
 
@@ -134,19 +185,18 @@ python -m pytest -v
 
 ## Put it online (optional)
 
-1. Create a GitHub repository and push this project (see "Git" below).
+1. The code is on GitHub: https://github.com/varun-sharma-2006/Regular-Expression-to-NFA-Converter-Simulator-
 2. On **render.com**: *New + → Blueprint* → choose your repository. `render.yaml` sets everything up (free plan).
 3. Optional: in the Render dashboard add the environment variable `LLM_API_KEY` to enable AI.
 4. Render gives you a public link like `https://automata-ai.onrender.com` that your teacher can open on any device.
 
-GitHub Actions (`.github/workflows/tests.yml`) runs all tests automatically on every push. The green badge at the top of this README shows that they pass.
+GitHub Actions (`.github/workflows/tests.yml`) runs all tests automatically on every push. The **tests** badge at the top of this README shows the latest result.
 
-### Git
-The project is already a Git repository with the first commit. To publish it:
+### Get the code
 ```powershell
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git branch -M main
-git push -u origin main
+git clone https://github.com/varun-sharma-2006/Regular-Expression-to-NFA-Converter-Simulator-.git
+cd Regular-Expression-to-NFA-Converter-Simulator-
+run.bat
 ```
 
 ---

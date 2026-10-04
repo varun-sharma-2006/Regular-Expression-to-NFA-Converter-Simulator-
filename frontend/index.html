@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AutomataAI</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%233b5bdb' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%233b5bdb' stroke-width='3'/%3E%3C/svg%3E">
+  <meta name="description" content="Regular expression to ε-NFA, DFA and minimized DFA, step by step. AI generates, automata verify.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c5cff'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='url(%23g)' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='url(%23g)' stroke-width='3'/%3E%3C/svg%3E">
+  <!-- Fonts: Inter for text, JetBrains Mono for regexes and tables -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <!-- Cytoscape.js draws the graphs; dagre gives a left-to-right layout. -->
   <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
@@ -20,16 +25,41 @@
 </head>
 <body>
 
-<header class="site-header">
-  <div>
-    <h1>AutomataAI</h1>
-    <p class="subtitle">Regex → ε-NFA → DFA → Minimized DFA → Regex &nbsp;·&nbsp; <em>AI generates, automata verify.</em></p>
-  </div>
+<header class="topbar">
+  <a class="brand" href="#top">
+    <span class="brand-logo" aria-hidden="true"></span>
+    <span>Automata<span class="gradient-text">AI</span></span>
+  </a>
   <div class="header-actions">
     <span id="ai-status" class="badge">AI: checking…</span>
     <button class="secondary small" id="theme-button" title="Switch light / dark mode">◐ Theme</button>
   </div>
 </header>
+
+<section class="hero" id="top">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <p class="eyebrow">Automata Theory · Interactive Simulator</p>
+  <h1>From regular expression to <span class="gradient-text">minimal automaton</span>, step by step.</h1>
+  <p class="hero-text">Watch Thompson's construction, subset construction, followpos and table-filling unfold on live graphs.
+    <b>AI generates, automata verify:</b> every AI answer is checked by exact algorithms.</p>
+  <div class="pipeline" aria-label="Conversion pipeline">
+    <a href="#section-input" class="pipe-step">Regex</a><span class="pipe-arrow">→</span>
+    <a href="#section-postfix" class="pipe-step">Postfix</a><span class="pipe-arrow">→</span>
+    <a href="#section-nfa" class="pipe-step">ε-NFA</a><span class="pipe-arrow">→</span>
+    <a href="#section-dfa" class="pipe-step">DFA</a><span class="pipe-arrow">→</span>
+    <a href="#section-min" class="pipe-step">Minimal DFA</a><span class="pipe-arrow">→</span>
+    <a href="#section-regex-back" class="pipe-step">Regex</a>
+  </div>
+  <div class="hero-actions">
+    <a class="button" href="#section-input">Start converting</a>
+    <a class="button ghost" href="#section-quiz">Try the quiz</a>
+  </div>
+  <div class="hero-stats">
+    <div><b>10</b><span>algorithms in pure Python</span></div>
+    <div><b>900+</b><span>automated tests</span></div>
+    <div><b>13</b><span>interactive stages</span></div>
+  </div>
+</section>
 
 <nav class="section-nav">
   <a href="#section-input">Input</a>
@@ -50,11 +80,11 @@
 <main>
 
   <!-- ======================= PART A ======================= -->
-  <h2 class="part-title">Part A · Automata Simulator</h2>
+  <div class="part-title"><span class="part-tag">Part A</span><h2>Automata Simulator</h2><p>Every conversion step, with tables, graphs and animations.</p></div>
 
   <!-- 1. Input -->
   <section class="card" id="section-input">
-    <h3>1. Regular expression</h3>
+    <h3><span class="step">1</span>Regular expression</h3>
     <div class="input-row">
       <input id="regex-input" type="text" placeholder="e.g. (a|b)*abb" autocomplete="off" spellcheck="false">
       <button class="secondary" id="epsilon-button" title="Insert ε (empty string)">ε</button>
@@ -81,7 +111,7 @@
     <!-- 2. Postfix -->
     <section class="card" id="section-postfix">
       <div class="card-head">
-        <h3>2. Postfix (shunting-yard)</h3>
+        <h3><span class="step">2</span>Postfix (shunting-yard)</h3>
         <button class="explain" data-stage="postfix">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="postfix"></div>
@@ -96,7 +126,7 @@
     <!-- 3. ε-NFA -->
     <section class="card" id="section-nfa">
       <div class="card-head">
-        <h3>3. ε-NFA (Thompson's construction)</h3>
+        <h3><span class="step">3</span>ε-NFA (Thompson's construction)</h3>
         <button class="explain" data-stage="nfa">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="nfa"></div>
@@ -124,7 +154,7 @@
     <!-- 4. DFA -->
     <section class="card" id="section-dfa">
       <div class="card-head">
-        <h3>4. DFA (subset construction)</h3>
+        <h3><span class="step">4</span>DFA (subset construction)</h3>
         <button class="explain" data-stage="dfa">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="dfa"></div>
@@ -154,7 +184,7 @@
     <!-- 5. Direct DFA -->
     <section class="card" id="section-direct">
       <div class="card-head">
-        <h3>5. Direct DFA (followpos method, no ε-NFA)</h3>
+        <h3><span class="step">5</span>Direct DFA (followpos method, no ε-NFA)</h3>
         <button class="explain" data-stage="direct_dfa">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="direct_dfa"></div>
@@ -187,7 +217,7 @@
     <!-- 6. Minimized DFA -->
     <section class="card" id="section-min">
       <div class="card-head">
-        <h3>6. Minimized DFA (table-filling)</h3>
+        <h3><span class="step">6</span>Minimized DFA (table-filling)</h3>
         <button class="explain" data-stage="min_dfa">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="min_dfa"></div>
@@ -212,7 +242,7 @@
     <!-- 7. DFA -> Regex -->
     <section class="card" id="section-regex-back">
       <div class="card-head">
-        <h3>7. Minimized DFA → Regex (state elimination)</h3>
+        <h3><span class="step">7</span>Minimized DFA → Regex (state elimination)</h3>
         <button class="explain" data-stage="regex_back">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="regex_back"></div>
@@ -236,7 +266,7 @@
     <!-- 8. Properties -->
     <section class="card" id="section-properties">
       <div class="card-head">
-        <h3>8. Language properties</h3>
+        <h3><span class="step">8</span>Language properties</h3>
         <button class="explain" data-stage="properties">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="properties"></div>
@@ -249,7 +279,7 @@
     <!-- 9. String tester -->
     <section class="card" id="section-tester">
       <div class="card-head">
-        <h3>9. String tester</h3>
+        <h3><span class="step">9</span>String tester</h3>
         <button class="explain" data-stage="simulate">Explain this step</button>
       </div>
       <div class="explanation hidden" data-for="simulate"></div>
@@ -278,11 +308,11 @@
   </div>
 
   <!-- ======================= PART B ======================= -->
-  <h2 class="part-title">Part B · AI Features</h2>
+  <div class="part-title"><span class="part-tag">Part B</span><h2>AI Features</h2><p>The AI proposes a regex, the automata prove whether it is right.</p></div>
 
   <!-- 10. Natural language -> regex -->
   <section class="card" id="section-ai">
-    <h3>10. Natural language → Regex</h3>
+    <h3><span class="step">10</span>Natural language → Regex</h3>
     <p class="hint">Describe a language in English. The AI writes a regex, our parser validates it, and the automata pipeline above draws it.</p>
     <div class="input-row">
       <input id="nl-input" type="text" placeholder="e.g. strings over {a,b} that end with abb" autocomplete="off">
@@ -294,7 +324,7 @@
   <!-- 11. Verifier (works without AI) -->
   <section class="card" id="section-verify">
     <div class="card-head">
-      <h3>11. AI Regex Verifier</h3>
+      <h3><span class="step">11</span>AI Regex Verifier</h3>
       <button class="explain" data-stage="verify">Explain this step</button>
     </div>
     <div class="explanation hidden" data-for="verify"></div>
@@ -322,12 +352,12 @@
   </section>
 
   <!-- ======================= PART C ======================= -->
-  <h2 class="part-title">Part C · Language Operations &amp; Practice</h2>
+  <div class="part-title"><span class="part-tag">Part C</span><h2>Language Operations &amp; Practice</h2><p>Closure properties on real automata, and a quiz to test yourself.</p></div>
 
   <!-- 12. Language operations -->
   <section class="card" id="section-operations">
     <div class="card-head">
-      <h3>12. Language operations (closure properties)</h3>
+      <h3><span class="step">12</span>Language operations (closure properties)</h3>
       <button class="explain" data-stage="operations">Explain this step</button>
     </div>
     <div class="explanation hidden" data-for="operations"></div>
@@ -376,7 +406,7 @@
 
   <!-- 13. Quiz -->
   <section class="card" id="section-quiz">
-    <h3>13. Practice quiz</h3>
+    <h3><span class="step">13</span>Practice quiz</h3>
     <p class="hint">A random regex and questions about its automata. Work them out on paper, then check. Answers are computed by the same algorithms.</p>
     <div class="input-row">
       <select id="quiz-level">
@@ -399,7 +429,10 @@
 
 </main>
 
-<footer>AutomataAI · Automata Theory course project · algorithms in pure Python</footer>
+<footer>
+  <span class="brand-logo small" aria-hidden="true"></span>
+  AutomataAI · Automata Theory course project · algorithms in pure Python · <em>AI generates, automata verify.</em>
+</footer>
 
 <script src="js/render.js"></script>
 <script src="js/main.js"></script>

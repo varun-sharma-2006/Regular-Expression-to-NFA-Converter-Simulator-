@@ -26,3 +26,10 @@ def test_quiz_answers_are_correct(level, seed):
 
 def test_quiz_is_reproducible_with_seed():
     assert make_quiz("medium", seed=7) == make_quiz("medium", seed=7)
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_quiz_regex_is_never_trivial(seed):
+    regex = make_quiz("easy", seed=seed)["regex"]
+    assert len(regex) >= 3
+    assert any(operator in regex for operator in "|*+?")

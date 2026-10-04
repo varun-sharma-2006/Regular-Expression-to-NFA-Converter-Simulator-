@@ -28,20 +28,45 @@ LEVELS = {
 }
 
 
-def random_regex(generator: random.Random, depth: int, alphabet: str = "ab") -> str:
-    """Build a random regex recursively (same idea as tests/test_random.py)."""
+def _random_part(generator: random.Random, depth: int, alphabet: str) -> tuple[str, str]:
+    """
+    Build a random regex and return (text, kind), where kind is "symbol",
+    "concat", "union" or "unary". Knowing the kind lets us add parentheses
+    only where they are needed, so quizzes look like hand-written regexes.
+    """
     if depth == 0 or generator.random() < 0.25:
-        return generator.choice(alphabet)
+        return generator.choice(alphabet), "symbol"
     kind = generator.choice(["concat", "concat", "union", "star", "plus", "optional"])
+
     if kind == "concat":
-        return random_regex(generator, depth - 1, alphabet) + random_regex(generator, depth - 1, alphabet)
+        left, left_kind = _random_part(generator, depth - 1, alphabet)
+        right, right_kind = _random_part(generator, depth - 1, alphabet)
+        # a|b followed by c must be written (a|b)c
+        if left_kind == "union":
+            left = "(" + left + ")"
+        if right_kind == "union":
+            right = "(" + right + ")"
+        return left + right, "concat"
+
     if kind == "union":
-        return "(" + random_regex(generator, depth - 1, alphabet) + "|" + random_regex(generator, depth - 1, alphabet) + ")"
-    operator = {"star": "*", "plus": "+", "optional": "?"}[kind]
-    inner = random_regex(generator, depth - 1, alphabet)
-    if len(inner) > 1 and not (inner.startswith("(") and inner.endswith(")")):
+        left, _ = _random_part(generator, depth - 1, alphabet)
+        right, _ = _random_part(generator, depth - 1, alphabet)
+        if left == right:          # a|a is just a
+            return _random_part(generator, depth - 1, alphabet)
+        return left + "|" + right, "union"
+
+    inner, inner_kind = _random_part(generator, depth - 1, alphabet)
+    if inner_kind == "unary":      # avoid (a*)+ and similar stacked operators
+        return inner, inner_kind
+    if inner_kind != "symbol":
         inner = "(" + inner + ")"
-    return inner + operator
+    operator = {"star": "*", "plus": "+", "optional": "?"}[kind]
+    return inner + operator, "unary"
+
+
+def random_regex(generator: random.Random, depth: int, alphabet: str = "ab") -> str:
+    """A random regex over `alphabet` with at most `depth` levels of operators."""
+    return _random_part(generator, depth, alphabet)[0]
 
 
 def _all_strings(alphabet: list[str], max_length: int) -> list[str]:
@@ -60,6 +85,10 @@ def make_quiz(level: str = "medium", seed: int | None = None) -> dict:
     # Try random regexes until one has an interesting minimized DFA.
     for _ in range(500):
         regex = random_regex(generator, depth)
+        # Skip trivial regexes like "a" or "ab": a quiz needs at least one operator.
+        has_operator = any(operator in regex for operator in "|*+?")
+        if len(regex) < 3 or not has_operator:
+            continue
         dfa = regex_to_min_dfa(regex)
         properties = describe_language(dfa, sample_size=6)
         if min_states <= len(dfa.states) <= max_states and not properties["empty"]:
