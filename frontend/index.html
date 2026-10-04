@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutomataAI</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%233b5bdb' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%233b5bdb' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <!-- Cytoscape.js draws the graphs; dagre gives a left-to-right layout. -->
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+  <!-- Apply the saved theme before the page is drawn (avoids a white flash). -->
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+    } catch (error) { /* storage blocked: use the system theme */ }
+  </script>
+</head>
+<body>
+
+<header class="site-header">
+  <div>
+    <h1>AutomataAI</h1>
+    <p class="subtitle">Regex → ε-NFA → DFA → Minimized DFA → Regex &nbsp;·&nbsp; <em>AI generates, automata verify.</em></p>
+  </div>
+  <div class="header-actions">
+    <span id="ai-status" class="badge">AI: checking…</span>
+    <button class="secondary small" id="theme-button" title="Switch light / dark mode">◐ Theme</button>
+  </div>
+</header>
+
+<nav class="section-nav">
+  <a href="#section-input">Input</a>
+  <a href="#section-postfix">Postfix</a>
+  <a href="#section-nfa">ε-NFA</a>
+  <a href="#section-dfa">DFA</a>
+  <a href="#section-direct">Direct DFA</a>
+  <a href="#section-min">Minimized</a>
+  <a href="#section-regex-back">DFA → Regex</a>
+  <a href="#section-properties">Properties</a>
+  <a href="#section-tester">Tester</a>
+  <a href="#section-ai">AI</a>
+  <a href="#section-verify">Verifier</a>
+  <a href="#section-operations">Operations</a>
+  <a href="#section-quiz">Quiz</a>
+</nav>
+
+<main>
+
+  <!-- ======================= PART A ======================= -->
+  <h2 class="part-title">Part A · Automata Simulator</h2>
+
+  <!-- 1. Input -->
+  <section class="card" id="section-input">
+    <h3>1. Regular expression</h3>
+    <div class="input-row">
+      <input id="regex-input" type="text" placeholder="e.g. (a|b)*abb" autocomplete="off" spellcheck="false">
+      <button class="secondary" id="epsilon-button" title="Insert ε (empty string)">ε</button>
+      <button id="convert-button">Convert</button>
+      <button class="secondary" id="share-button" title="Copy a link that opens this regex">🔗 Link</button>
+    </div>
+    <div class="examples">
+      <span>Examples:</span>
+      <button class="chip" data-regex="(a|b)*abb">(a|b)*abb</button>
+      <button class="chip" data-regex="a*b*">a*b*</button>
+      <button class="chip" data-regex="(ab)*">(ab)*</button>
+      <button class="chip" data-regex="a(b|c)*">a(b|c)*</button>
+      <button class="chip" data-regex="(a|b)*a(a|b)">(a|b)*a(a|b)</button>
+      <button class="chip" data-regex="a+b?">a+b?</button>
+      <button class="chip" data-regex="[01]*1">[01]*1</button>
+    </div>
+    <p class="hint">Symbols a–z, A–Z, 0–9 · operators <code>|</code> <code>*</code> <code>+</code> <code>?</code> <code>( )</code> · classes <code>[abc]</code> <code>[a-z]</code> · <code>ε</code> = empty string · concatenation is implicit.</p>
+    <div id="regex-error" class="error hidden"></div>
+    <div id="share-message" class="info hidden"></div>
+  </section>
+
+  <div id="results" class="hidden">
+
+    <!-- 2. Postfix -->
+    <section class="card" id="section-postfix">
+      <div class="card-head">
+        <h3>2. Postfix (shunting-yard)</h3>
+        <button class="explain" data-stage="postfix">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="postfix"></div>
+      <div class="facts">
+        <div id="expanded-fact" class="hidden"><span>Classes expanded</span><code id="expanded-output"></code></div>
+        <div><span>Explicit concatenation</span><code id="explicit-output"></code></div>
+        <div><span>Postfix</span><code id="postfix-output"></code></div>
+      </div>
+      <div class="table-wrap" data-name="shunting-yard"><table id="postfix-table"></table></div>
+    </section>
+
+    <!-- 3. ε-NFA -->
+    <section class="card" id="section-nfa">
+      <div class="card-head">
+        <h3>3. ε-NFA (Thompson's construction)</h3>
+        <button class="explain" data-stage="nfa">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="nfa"></div>
+      <div class="build-controls" data-graph="nfa">
+        <span class="build-label">Build step by step:</span>
+        <button class="secondary small" data-build="first" title="First step">⏮</button>
+        <button class="secondary small" data-build="prev" title="Previous step">◀</button>
+        <button class="secondary small" data-build="next" title="Next step">▶</button>
+        <button class="secondary small" data-build="last" title="Show complete NFA">⏭</button>
+        <span class="build-status"></span>
+      </div>
+      <div class="graph" id="nfa-graph" data-graph="nfa" data-name="epsilon-nfa"></div>
+      <div class="two-columns">
+        <div>
+          <h4>Thompson rules applied</h4>
+          <ol id="thompson-steps" class="rule-list"></ol>
+        </div>
+        <div>
+          <h4>Transition table</h4>
+          <div class="table-wrap" data-name="nfa-transitions"><table id="nfa-table"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. DFA -->
+    <section class="card" id="section-dfa">
+      <div class="card-head">
+        <h3>4. DFA (subset construction)</h3>
+        <button class="explain" data-stage="dfa">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="dfa"></div>
+      <div class="build-controls" data-graph="dfa">
+        <span class="build-label">Build step by step:</span>
+        <button class="secondary small" data-build="first">⏮</button>
+        <button class="secondary small" data-build="prev">◀</button>
+        <button class="secondary small" data-build="next">▶</button>
+        <button class="secondary small" data-build="last">⏭</button>
+        <span class="build-status"></span>
+      </div>
+      <div class="graph" id="dfa-graph" data-graph="dfa" data-name="dfa"></div>
+      <p class="hint">Tip: hover over a DFA state (or a table row) to highlight its NFA states in the ε-NFA graph above.</p>
+      <div class="two-columns">
+        <div>
+          <h4>ε-closure of every NFA state</h4>
+          <div class="table-wrap" data-name="epsilon-closures"><table id="closure-table"></table></div>
+        </div>
+        <div>
+          <h4>Subset construction table</h4>
+          <div class="table-wrap" data-name="subset-construction"><table id="subset-table"></table></div>
+          <p class="hint" id="dead-state-note"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Direct DFA -->
+    <section class="card" id="section-direct">
+      <div class="card-head">
+        <h3>5. Direct DFA (followpos method, no ε-NFA)</h3>
+        <button class="explain" data-stage="direct_dfa">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="direct_dfa"></div>
+      <p id="direct-comparison" class="info"></p>
+      <h4>Syntax tree of (regex)# &nbsp;<span class="hint">(subscripts = positions, dashed = nullable)</span></h4>
+      <div class="graph tree-graph" id="tree-graph" data-graph="tree" data-name="syntax-tree"></div>
+      <div class="two-columns">
+        <div>
+          <h4>nullable, firstpos, lastpos</h4>
+          <div class="table-wrap" data-name="tree-functions"><table id="tree-table"></table></div>
+          <h4>followpos</h4>
+          <div class="table-wrap" data-name="followpos"><table id="followpos-table"></table></div>
+        </div>
+        <div>
+          <h4>DFA construction (states = sets of positions)</h4>
+          <div class="table-wrap" data-name="direct-dfa"><table id="direct-table"></table></div>
+        </div>
+      </div>
+      <div class="build-controls" data-graph="direct">
+        <span class="build-label">Build step by step:</span>
+        <button class="secondary small" data-build="first">⏮</button>
+        <button class="secondary small" data-build="prev">◀</button>
+        <button class="secondary small" data-build="next">▶</button>
+        <button class="secondary small" data-build="last">⏭</button>
+        <span class="build-status"></span>
+      </div>
+      <div class="graph" id="direct-graph" data-graph="direct" data-name="direct-dfa"></div>
+    </section>
+
+    <!-- 6. Minimized DFA -->
+    <section class="card" id="section-min">
+      <div class="card-head">
+        <h3>6. Minimized DFA (table-filling)</h3>
+        <button class="explain" data-stage="min_dfa">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="min_dfa"></div>
+      <div class="graph" id="min-graph" data-graph="min_dfa" data-name="minimized-dfa"></div>
+      <p class="hint">Tip: hover over a minimized state to see which DFA states were merged into it.</p>
+      <div class="two-columns">
+        <div>
+          <h4>Marking passes</h4>
+          <div id="passes"></div>
+        </div>
+        <div>
+          <h4>Distinguishability table</h4>
+          <div class="table-wrap" data-name="distinguishability"><table id="pair-table" class="pair-table"></table></div>
+          <h4>Equivalence groups</h4>
+          <p id="groups"></p>
+          <h4>Minimized transition table</h4>
+          <div class="table-wrap" data-name="minimized-dfa"><table id="min-table"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. DFA -> Regex -->
+    <section class="card" id="section-regex-back">
+      <div class="card-head">
+        <h3>7. Minimized DFA → Regex (state elimination)</h3>
+        <button class="explain" data-stage="regex_back">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="regex_back"></div>
+      <div class="facts">
+        <div><span>Regex read back from the DFA</span><code id="regex-back-output" class="wrap-code"></code></div>
+      </div>
+      <p id="regex-back-verdict"></p>
+      <button class="secondary small" id="regex-back-load">Load this regex into Part A</button>
+      <div class="two-columns">
+        <div>
+          <h4>Start: generalized NFA edges</h4>
+          <ul id="gnfa-edges" class="rule-list"></ul>
+        </div>
+        <div>
+          <h4>Eliminating states one by one</h4>
+          <ol id="elimination-steps" class="rule-list"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Properties -->
+    <section class="card" id="section-properties">
+      <div class="card-head">
+        <h3>8. Language properties</h3>
+        <button class="explain" data-stage="properties">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="properties"></div>
+      <p id="properties-summary" class="verdict nothing"></p>
+      <div class="facts" id="properties-facts"></div>
+      <h4>Shortest accepted strings <span class="hint">(click one to test it)</span></h4>
+      <div id="shortest-strings" class="examples"></div>
+    </section>
+
+    <!-- 9. String tester -->
+    <section class="card" id="section-tester">
+      <div class="card-head">
+        <h3>9. String tester</h3>
+        <button class="explain" data-stage="simulate">Explain this step</button>
+      </div>
+      <div class="explanation hidden" data-for="simulate"></div>
+      <div class="input-row">
+        <input id="test-string" type="text" placeholder="string to test, e.g. aabb (empty = ε)" autocomplete="off" spellcheck="false">
+        <select id="test-automaton">
+          <option value="min_dfa">on minimized DFA</option>
+          <option value="dfa">on DFA</option>
+          <option value="nfa">on ε-NFA (set of states)</option>
+        </select>
+        <button id="test-button">Test</button>
+      </div>
+      <div id="test-result" class="hidden">
+        <p id="test-verdict" class="verdict"></p>
+        <p id="test-reason"></p>
+        <p>Path: <span id="test-path" class="path"></span></p>
+        <div class="controls">
+          <button class="secondary" id="anim-reset">⟲ Reset</button>
+          <button class="secondary" id="anim-next">Next ▶</button>
+          <button class="secondary" id="anim-play">Play ▶▶</button>
+          <span id="anim-status"></span>
+        </div>
+        <div class="graph" id="test-graph" data-graph="test" data-name="string-test"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================= PART B ======================= -->
+  <h2 class="part-title">Part B · AI Features</h2>
+
+  <!-- 10. Natural language -> regex -->
+  <section class="card" id="section-ai">
+    <h3>10. Natural language → Regex</h3>
+    <p class="hint">Describe a language in English. The AI writes a regex, our parser validates it, and the automata pipeline above draws it.</p>
+    <div class="input-row">
+      <input id="nl-input" type="text" placeholder="e.g. strings over {a,b} that end with abb" autocomplete="off">
+      <button id="nl-button">Generate regex</button>
+    </div>
+    <div id="nl-message" class="hidden"></div>
+  </section>
+
+  <!-- 11. Verifier (works without AI) -->
+  <section class="card" id="section-verify">
+    <div class="card-head">
+      <h3>11. AI Regex Verifier</h3>
+      <button class="explain" data-stage="verify">Explain this step</button>
+    </div>
+    <div class="explanation hidden" data-for="verify"></div>
+    <p class="hint">Checks a regex with examples (DFA simulation) and, optionally, proves it equal to an expected regex (product automaton). Works without an API key. Separate examples with commas or new lines; write ε for the empty string.</p>
+    <label>Regex to verify (filled in automatically by step 10)
+      <input id="verify-regex" type="text" placeholder="e.g. (a|b)*abb" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="two-columns">
+      <label>Positive examples (should be accepted)
+        <textarea id="verify-positives" rows="3" placeholder="abb, aabb, babb"></textarea>
+      </label>
+      <label>Negative examples (should be rejected)
+        <textarea id="verify-negatives" rows="3" placeholder="ε, ab, abba"></textarea>
+      </label>
+    </div>
+    <label>Expected regex (optional, for an exact equivalence proof)
+      <input id="verify-expected" type="text" placeholder="e.g. (b|a)*abb" autocomplete="off" spellcheck="false">
+    </label>
+    <button id="verify-button">Verify</button>
+    <div id="verify-result" class="hidden">
+      <p id="verify-verdict" class="verdict"></p>
+      <div class="table-wrap" data-name="verification"><table id="verify-table"></table></div>
+      <p id="verify-equivalence"></p>
+    </div>
+  </section>
+
+  <!-- ======================= PART C ======================= -->
+  <h2 class="part-title">Part C · Language Operations &amp; Practice</h2>
+
+  <!-- 12. Language operations -->
+  <section class="card" id="section-operations">
+    <div class="card-head">
+      <h3>12. Language operations (closure properties)</h3>
+      <button class="explain" data-stage="operations">Explain this step</button>
+    </div>
+    <div class="explanation hidden" data-for="operations"></div>
+    <p class="hint">Combine two regular languages with the product automaton, or complement one. The result is again a DFA, which proves regular languages are closed under these operations.</p>
+    <div class="operation-grid">
+      <label>L1 (regex)
+        <input id="op-regex1" type="text" value="(a|b)*abb" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Operation
+        <select id="op-operation">
+          <option value="intersection">L1 ∩ L2 (intersection)</option>
+          <option value="union">L1 ∪ L2 (union)</option>
+          <option value="difference">L1 − L2 (difference)</option>
+          <option value="symmetric_difference">L1 ⊕ L2 (symmetric difference)</option>
+          <option value="complement">Σ* − L1 (complement of L1)</option>
+        </select>
+      </label>
+      <label id="op-regex2-label">L2 (regex)
+        <input id="op-regex2" type="text" value="(a|b)*a(a|b)*" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Extra alphabet symbols (optional)
+        <input id="op-alphabet" type="text" placeholder="e.g. c" autocomplete="off" spellcheck="false">
+      </label>
+    </div>
+    <button id="op-button">Apply</button>
+    <div id="op-error" class="error hidden"></div>
+    <div id="op-result" class="hidden">
+      <p id="op-summary" class="verdict nothing"></p>
+      <div class="facts" id="op-facts"></div>
+      <div class="graph" id="op-graph" data-graph="operation" data-name="operation-result"></div>
+      <div class="two-columns">
+        <div id="op-product-box">
+          <h4>Product automaton (reachable pairs)</h4>
+          <div class="table-wrap" data-name="product-automaton"><table id="op-product-table"></table></div>
+        </div>
+        <div>
+          <h4>Shortest strings in the result</h4>
+          <div id="op-strings" class="examples"></div>
+          <h4>Regex for the result</h4>
+          <p><code id="op-regex-back" class="wrap-code"></code></p>
+          <button class="secondary small" id="op-load">Load result regex into Part A</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. Quiz -->
+  <section class="card" id="section-quiz">
+    <h3>13. Practice quiz</h3>
+    <p class="hint">A random regex and questions about its automata. Work them out on paper, then check. Answers are computed by the same algorithms.</p>
+    <div class="input-row">
+      <select id="quiz-level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="quiz-new">New quiz</button>
+    </div>
+    <div id="quiz-box" class="hidden">
+      <p>Regex: <code id="quiz-regex"></code></p>
+      <ol id="quiz-questions" class="quiz-list"></ol>
+      <div class="controls">
+        <button id="quiz-check">Check answers</button>
+        <button class="secondary" id="quiz-show">Show automata in Part A</button>
+        <span id="quiz-score" class="verdict nothing hidden"></span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>AutomataAI · Automata Theory course project · algorithms in pure Python</footer>
+
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+<script src="js/extras.js"></script>
+</body>
+</html>

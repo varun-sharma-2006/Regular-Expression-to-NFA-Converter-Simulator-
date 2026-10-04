@@ -1,0 +1,11 @@
+# Web server
+flask>=3.0
+python-dotenv>=1.0
+gunicorn>=22.0        # production server used when deployed (Render); not needed locally
+
+# LLM providers (only the one you choose in .env is actually used)
+anthropic>=0.40
+openai>=1.0
+
+# Testing
+pytest>=7.0
