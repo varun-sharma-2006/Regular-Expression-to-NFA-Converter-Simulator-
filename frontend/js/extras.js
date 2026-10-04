@@ -281,13 +281,37 @@ async function openAiDialog() {
   await checkAiStatus();   // main.js: refreshes aiConfigured and the badge
   $("ai-dialog-status").textContent = aiConfigured
     ? "AI is configured: " + $("ai-status").textContent.replace("AI: ", "") + ". Use \"Test connection\" to check the key."
-    : "AI is not configured yet. Everything else works without it. Follow these 4 steps to enable it:";
+    : "AI is not configured yet. Everything else works without it. Two quick steps to enable it:";
   $("ai-test-result").textContent = "";
   $("ai-dialog").showModal();
 }
 
+/** Save the pasted key into backend/.env (through the server), then test it. */
+async function saveAiKey() {
+  const result = $("ai-test-result");
+  const key = $("ai-key").value.trim();
+  if (!key) {
+    result.className = "test-fail";
+    result.textContent = "✘ Paste your API key into the box first.";
+    return;
+  }
+  result.className = "";
+  result.textContent = "Saving the key and testing the connection…";
+  try {
+    await postJson("/api/ai/configure", { provider: $("ai-provider").value, key: key });
+    $("ai-key").value = "";   // do not keep the secret in the page
+  } catch (error) {
+    result.className = "test-fail";
+    result.textContent = "✘ " + error.message;
+    return;
+  }
+  await testAiConnection();
+}
+
 async function testAiConnection() {
   const result = $("ai-test-result");
+  result.className = "";
+  result.textContent = "Testing the connection…";
   await withBusyButton($("ai-test-button"), "Testing…", async () => {
     try {
       const answer = await postJson("/api/ai/test", {});
@@ -325,5 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("ai-status").addEventListener("click", openAiDialog);
   $("ai-dialog-close").addEventListener("click", () => $("ai-dialog").close());
   $("ai-test-button").addEventListener("click", testAiConnection);
+  $("ai-save-button").addEventListener("click", saveAiKey);
+  $("ai-key").addEventListener("keydown", (e) => { if (e.key === "Enter") saveAiKey(); });
   $("share-button").addEventListener("click", copyShareLink);
 });

@@ -441,13 +441,25 @@
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a> or
       <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a>.
       Claude and OpenAI keys work too.</li>
-    <li><b>Open the file</b> <code>backend/.env</code> in the project folder (Notepad or VS Code).</li>
-    <li><b>Fill in two lines</b> and save:
-      <pre>LLM_PROVIDER=gemini
-LLM_API_KEY=paste-your-key-here</pre>
-      Use <code>groq</code>, <code>anthropic</code> or <code>openai</code> for other providers.</li>
-    <li><b>Click "Test connection".</b> No restart needed: the server re-reads the file.</li>
+    <li><b>Paste it here</b> and click <b>Save &amp; test</b>. The key is saved in <code>backend/.env</code> on this computer.
+      <div class="key-form">
+        <select id="ai-provider">
+          <option value="gemini">Google Gemini (free)</option>
+          <option value="groq">Groq (free)</option>
+          <option value="anthropic">Anthropic Claude</option>
+          <option value="openai">OpenAI</option>
+        </select>
+        <input id="ai-key" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false">
+        <button id="ai-save-button">Save &amp; test</button>
+      </div>
+    </li>
   </ol>
+  <details class="manual-setup">
+    <summary>Prefer to edit the file yourself?</summary>
+    <p>Open <code>backend/.env</code> in VS Code or Notepad (<b>not</b> the terminal), fill in these two lines, save, and click "Test connection":</p>
+    <pre>LLM_PROVIDER=gemini
+LLM_API_KEY=paste-your-key-here</pre>
+  </details>
   <p class="hint">Your key stays on your computer: <code>.env</code> is in <code>.gitignore</code> and is never uploaded to GitHub.</p>
   <div class="controls">
     <button id="ai-test-button">Test connection</button>

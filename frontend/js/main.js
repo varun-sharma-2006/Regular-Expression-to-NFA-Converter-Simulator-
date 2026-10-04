@@ -552,7 +552,7 @@ async function checkAiStatus() {
 }
 
 const AI_OFF_MESSAGE =
-  "AI is not configured yet. Click the \"AI: not configured\" badge at the top right for a 4-step setup " +
+  "AI is not configured yet. Click the \"AI: not configured\" badge at the top right to paste your key " +
   "(free keys available). Everything else works without it.";
 
 async function generateFromEnglish() {

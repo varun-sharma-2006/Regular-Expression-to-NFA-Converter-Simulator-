@@ -621,6 +621,12 @@ button.badge.off { color: var(--muted); }
   font-family: var(--mono);
   font-size: 0.88rem;
 }
+.key-form { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.key-form select { flex: 0 0 auto; }
+.key-form input { flex: 1; min-width: 180px; font-family: var(--mono); }
+.manual-setup { margin: 4px 0 10px; color: var(--muted); font-size: 0.9rem; }
+.manual-setup summary { cursor: pointer; color: var(--primary); }
+.manual-setup pre { margin: 8px 0; padding: 10px 14px; border-radius: var(--radius-small); background: var(--code-bg); font-family: var(--mono); color: var(--text); }
 .test-ok { color: var(--accept); }
 .test-fail { color: var(--reject); }
 

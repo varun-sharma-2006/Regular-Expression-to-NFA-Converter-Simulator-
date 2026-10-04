@@ -44,6 +44,7 @@ from ai.llm_client import (                                   # noqa: E402
     is_configured,
 )
 from ai.nl_to_regex import generate_regex                     # noqa: E402
+from ai.settings_file import InvalidSettingsError, save_ai_settings  # noqa: E402
 from ai.verifier import verify_regex                          # noqa: E402
 from automata.equivalence import check_equivalence            # noqa: E402
 from automata.parser import EPSILON, RegexSyntaxError         # noqa: E402
@@ -206,6 +207,28 @@ def reload_ai_settings() -> None:
 def refresh_settings_for_ai_routes():
     if request.path.startswith("/api/ai/"):
         reload_ai_settings()
+
+
+LOCAL_ADDRESSES = {"127.0.0.1", "::1", "localhost"}
+
+
+@app.post("/api/ai/configure")
+def ai_configure():
+    """
+    Save the provider and key typed into the AI setup window into backend/.env.
+    SAFETY: only allowed from this computer (localhost). On a public server
+    (e.g. Render) requests come from the internet and are refused, so nobody
+    can change the key of a deployed app.
+    """
+    if request.remote_addr not in LOCAL_ADDRESSES:
+        return error_response("Keys can only be saved from the computer running the server.", 403)
+    body = get_json_body()
+    try:
+        save_ai_settings(BACKEND_DIR / ".env", str(body.get("provider", "")), str(body.get("key", "")))
+    except InvalidSettingsError as error:
+        return error_response(str(error))
+    reload_ai_settings()
+    return jsonify({"saved": True, "configured": is_configured(), "provider": get_provider(), "model": get_model()})
 
 
 @app.post("/api/ai/test")

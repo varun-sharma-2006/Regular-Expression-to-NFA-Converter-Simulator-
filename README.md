@@ -185,6 +185,8 @@ Everything except "Generate regex" and the AI tutor works without a key. To turn
    ```
 4. In the app, click the **AI badge** (top right) → **Test connection**. You don't need to restart: the server re-reads `.env`.
 
+**Even easier:** click the AI badge, paste your key into the box and press **Save & test**. The app writes `.env` for you (only from your own computer, never on a deployed server).
+
 | Variable | Meaning |
 |---|---|
 | `LLM_PROVIDER` | `gemini` (free), `groq` (free), `anthropic` or `openai` (also any OpenAI-compatible server via `LLM_BASE_URL`) |
