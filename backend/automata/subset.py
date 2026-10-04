@@ -33,6 +33,26 @@ from automata.thompson import NFA
 
 DEAD_STATE_NAME = "∅"
 
+# Subset construction can create up to 2^n DFA states: each extra (a|b) in
+# (a|b)*a(a|b)(a|b)... doubles the DFA. A short regex could keep the server
+# busy for minutes, so every DFA we build stops at this size. (Such a DFA
+# would also be far too big to draw.)
+MAX_DFA_STATES = 300
+
+
+class AutomatonTooLargeError(ValueError):
+    """Raised when a construction would create more than MAX_DFA_STATES states."""
+
+
+def check_dfa_size(state_count: int) -> None:
+    """Stop a construction that has grown past MAX_DFA_STATES states."""
+    if state_count > MAX_DFA_STATES:
+        raise AutomatonTooLargeError(
+            f"This needs more than {MAX_DFA_STATES} DFA states (the subset construction can "
+            "grow exponentially: each extra (a|b) after (a|b)*a doubles the DFA). "
+            "Please try a shorter regular expression."
+        )
+
 
 class DFA:
     """
@@ -158,9 +178,12 @@ def subset_construction(nfa: NFA) -> tuple[DFA, dict]:
     alphabet = nfa.sorted_alphabet()
 
     # ε-closure of each individual NFA state (shown on the page for learning).
+    # The closure of a SET is the union of its members' closures, so these are
+    # reused below instead of searching the NFA again for every DFA edge.
+    single_closures = {state: epsilon_closure(nfa, [state]) for state in nfa.states}
     closures = []
     for state in nfa.states:
-        closures.append({"state": state, "closure": sorted(epsilon_closure(nfa, [state]))})
+        closures.append({"state": state, "closure": sorted(single_closures[state])})
 
     names: dict[frozenset[int], str] = {}     # NFA-state set -> DFA state name
     order: list[frozenset[int]] = []          # DFA states in discovery order
@@ -176,6 +199,7 @@ def subset_construction(nfa: NFA) -> tuple[DFA, dict]:
                 names[state_set] = make_state_name(letter_count)
                 letter_count += 1
             order.append(state_set)
+            check_dfa_size(len(order))
             work_list.append(state_set)
         return names[state_set]
 
@@ -194,9 +218,17 @@ def subset_construction(nfa: NFA) -> tuple[DFA, dict]:
         current_name = names[current_set]
         transitions[current_name] = {}
         row_cells = {}
+        # move(S, a) for EVERY symbol a in one pass over S (same result as
+        # calling move() once per symbol, but much faster for big alphabets).
+        moves: dict[str, set[int]] = {symbol: set() for symbol in alphabet}
+        for state in current_set:
+            for symbol, targets in nfa.transitions[state].items():
+                if symbol != EPSILON:
+                    moves[symbol].update(targets)
         for symbol in alphabet:
-            moved = move(nfa, current_set, symbol)
-            target_set = epsilon_closure(nfa, moved)
+            moved = moves[symbol]
+            # ε-closure(move(S, a)) = union of the ε-closures of the moved states.
+            target_set = frozenset().union(*(single_closures[s] for s in moved))
             target_name = get_name(target_set)
             transitions[current_name][symbol] = target_name
             row_cells[symbol] = {

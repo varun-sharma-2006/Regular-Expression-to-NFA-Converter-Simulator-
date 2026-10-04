@@ -35,6 +35,9 @@ paragraphs or bullet points, no tables."""
 # Keep prompts small: very large automata are summarised by truncation.
 MAX_DATA_CHARACTERS = 12000
 
+# Room for a ~300-word answer, plus thinking for models that think first.
+MAX_REPLY_TOKENS = 3000
+
 
 def explain_step(stage: str, data: dict, regex: str) -> str:
     """Ask the LLM to explain `stage` for `regex` using the stage's `data`."""
@@ -49,4 +52,4 @@ def explain_step(stage: str, data: dict, regex: str) -> str:
         f"Data produced by this step (JSON):\n{data_text}\n\n"
         "Please explain this step to me."
     )
-    return ask_llm(SYSTEM_PROMPT, user_message)
+    return ask_llm(SYSTEM_PROMPT, user_message, max_tokens=MAX_REPLY_TOKENS)

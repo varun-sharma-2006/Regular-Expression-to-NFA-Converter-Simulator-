@@ -61,9 +61,10 @@ async function postJson(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await response.json();
+  // A proxy error (e.g. a server timeout) sends an HTML page, not JSON.
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.error || "Request failed");
+    const error = new Error(data.error || `Request failed (server answered ${response.status}). Please try again.`);
     error.data = data;
     throw error;
   }

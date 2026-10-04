@@ -122,10 +122,12 @@ backend/
     explainer.py         AI tutor for any stage
     builtin_explainer.py explanation without AI (used when no API key is set)
   tests/                 pytest tests (incl. 500 random regexes checked against an answer key)
-  requirements.txt
+  requirements.txt       pinned packages the app needs
+  requirements-dev.txt   + pytest, for running the tests
   .env.example
 frontend/
   index.html, style.css
+  vendor/                Cytoscape.js + dagre, bundled so graphs work offline
   js/render.js           Cytoscape.js drawing, build player, highlighting, PNG export
   js/main.js             Parts A and B: fetch API, fill tables, animations
   js/extras.js           Part C, export, theme, shareable links
@@ -157,6 +159,8 @@ python app.py
 ```
 Open **http://127.0.0.1:5000** in your browser.
 
+Developing? Run `$env:FLASK_DEBUG=1` (PowerShell) before `python app.py` for auto-reload and the error debugger. It is off by default because the debugger can run code from the browser.
+
 (macOS/Linux: `source .venv/bin/activate` and `cp .env.example .env`.)
 
 **Shareable links:** the address bar always contains the current regex, e.g. `http://127.0.0.1:5000/?regex=(a%7Cb)*abb`. Opening that link shows the same regex.
@@ -165,6 +169,7 @@ Open **http://127.0.0.1:5000** in your browser.
 ```powershell
 cd backend
 .venv\Scripts\activate
+pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
@@ -176,7 +181,7 @@ python -m pytest -v
 ### Enable the AI features (2 minutes, free)
 Everything except "Generate regex" and the AI tutor works without a key. To turn the AI on:
 
-1. Get a **free** API key: [Google Gemini](https://aistudio.google.com/apikey) or [Groq](https://console.groq.com/keys). Claude and OpenAI keys work too.
+1. Get a **free** API key (no credit card): [Google Gemini](https://aistudio.google.com/apikey) or [Groq](https://console.groq.com/keys). Groq is a good backup if Gemini is busy.
 2. Open `backend/.env`. `run.bat` creates it from `backend/.env.example` on the first run.
 3. Fill in two lines and save:
    ```
@@ -189,9 +194,9 @@ Everything except "Generate regex" and the AI tutor works without a key. To turn
 
 | Variable | Meaning |
 |---|---|
-| `LLM_PROVIDER` | `gemini` (free), `groq` (free), `anthropic` or `openai` (also any OpenAI-compatible server via `LLM_BASE_URL`) |
+| `LLM_PROVIDER` | `gemini` (free, default) or `groq` (free). Advanced: `openai` for OpenAI or any OpenAI-compatible server (e.g. Ollama) via `LLM_BASE_URL` |
 | `LLM_API_KEY` | your secret key. Never put it in the code. `.env` is in `.gitignore`, so it is never uploaded |
-| `LLM_MODEL` | optional. Defaults: `gemini-3.8-flash`, `llama-3.3-70b-versatile`, `claude-opus-5-5`, `gpt-4o-mini` |
+| `LLM_MODEL` | optional. Defaults: `gemini-3.8-flash`, `llama-3.3-70b-versatile`, `gpt-4o-mini` |
 | `LLM_BASE_URL` | optional, only for other OpenAI-compatible servers (e.g. Ollama) |
 
 ---
@@ -200,8 +205,13 @@ Everything except "Generate regex" and the AI tutor works without a key. To turn
 
 1. The code is on GitHub: https://github.com/varun-sharma-2006/Regular-Expression-to-NFA-Converter-Simulator-
 2. On **render.com**: *New + → Blueprint* → choose your repository. `render.yaml` sets everything up (free plan).
-3. Optional: in the Render dashboard add the environment variable `LLM_API_KEY` to enable AI.
+3. Optional: in the Render dashboard add the environment variable `LLM_API_KEY` to enable AI. `render.yaml` uses **Gemini** (free key), so visitors of the public link cannot run up a bill on a paid key.
 4. Render gives you a public link like `https://automata-ai.onrender.com` that your teacher can open on any device.
+
+Safety limits on a public server:
+- **AI requests:** at most `AI_REQUESTS_PER_MINUTE` (default 10) per visitor. Requests from your own computer are never limited.
+- **Automaton size:** every DFA (subset, direct, product) stops at 300 states with a clear message, so no regex can keep the server busy.
+- **Server:** gunicorn runs 2 workers × 4 threads, so one slow request does not block other visitors.
 
 GitHub Actions (`.github/workflows/tests.yml`) runs all tests automatically on every push. The **tests** badge at the top of this README shows the latest result.
 
@@ -225,7 +235,7 @@ run.bat
 | `r*` `r+` `r?` | zero-or-more, one-or-more, zero-or-one (highest precedence) |
 | `( )` | grouping |
 
-Precedence: `* + ?` > concatenation > `|`. All binary operators are left-associative. Maximum length: 100 characters.
+Precedence: `* + ?` > concatenation > `|`. All binary operators are left-associative. Maximum length: 100 characters, and at most 300 DFA states (a short regex such as `(a|b)*a(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)` already needs 2⁹ = 512).
 
 ---
 

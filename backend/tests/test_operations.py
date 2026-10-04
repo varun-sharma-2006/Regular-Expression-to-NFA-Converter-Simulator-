@@ -156,3 +156,10 @@ def test_nfa_simulation_stops_on_empty_set():
     run = simulate_nfa(nfa_for("ab"), "ba")
     assert not run["accepted"]
     assert run["sets"][-1] == []
+
+
+def test_product_automaton_is_stopped_at_the_size_limit():
+    from automata.subset import AutomatonTooLargeError
+    # 128 states (remembers the last 7 symbols) x 3 states (number of a's mod 3)
+    with pytest.raises(AutomatonTooLargeError):
+        run_language_operation("(a|b)*a" + "(a|b)" * 6, "(b*ab*ab*a)*b*", "intersection")

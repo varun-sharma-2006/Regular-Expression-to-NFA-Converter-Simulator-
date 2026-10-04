@@ -6,6 +6,8 @@ from automata.parser import parse_regex
 from automata.simulate import accepts
 from automata.subset import (
     DEAD_STATE_NAME,
+    MAX_DFA_STATES,
+    AutomatonTooLargeError,
     epsilon_closure,
     make_state_name,
     subset_construction,
@@ -74,3 +76,14 @@ def test_dfa_language_matches_answer_key(regex):
     _, dfa, _ = build_dfa(regex)
     for text in all_strings("abc01", 4):
         assert accepts(dfa, text) == expected_match(regex, text), (regex, text)
+
+
+def test_exponential_dfa_is_stopped_at_the_size_limit():
+    # Each extra (a|b) doubles the DFA: 2^9 = 512 states > MAX_DFA_STATES.
+    with pytest.raises(AutomatonTooLargeError, match=str(MAX_DFA_STATES)):
+        build_dfa("(a|b)*a" + "(a|b)" * 8)
+
+
+def test_dfa_just_under_the_size_limit_is_built():
+    _, dfa, _ = build_dfa("(a|b)*a" + "(a|b)" * 7)     # 2^8 = 256 states + 1
+    assert len(dfa.states) <= MAX_DFA_STATES

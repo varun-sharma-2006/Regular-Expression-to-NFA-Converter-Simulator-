@@ -17,6 +17,10 @@ from automata.parser import RegexSyntaxError, parse_regex
 
 MAX_ATTEMPTS = 3
 
+# The answer is one short line. The extra room is for models that "think"
+# before answering, since thinking also counts towards the limit.
+MAX_REPLY_TOKENS = 1500
+
 SYSTEM_PROMPT = """You convert English descriptions of formal languages into regular expressions.
 
 Output rules (follow exactly):
@@ -66,7 +70,7 @@ def generate_regex(description: str) -> dict:
     message = f"Description: {description}"
 
     for _ in range(MAX_ATTEMPTS):
-        raw_reply = ask_llm(SYSTEM_PROMPT, message)
+        raw_reply = ask_llm(SYSTEM_PROMPT, message, max_tokens=MAX_REPLY_TOKENS)
         candidate = clean_llm_output(raw_reply)
         try:
             parse_regex(candidate)

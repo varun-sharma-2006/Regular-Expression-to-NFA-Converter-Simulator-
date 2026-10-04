@@ -79,7 +79,7 @@ def test_clean_llm_output(llm_reply, expected):
 
 
 def test_generate_regex_accepts_valid_reply(monkeypatch):
-    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message: "(a|b)*abb")
+    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message, max_tokens=None: "(a|b)*abb")
     result = nl_to_regex.generate_regex("ends with abb")
     assert result["regex"] == "(a|b)*abb"
     assert len(result["attempts"]) == 1
@@ -89,7 +89,7 @@ def test_generate_regex_retries_after_invalid_reply(monkeypatch):
     replies = iter(["(a|b)*ab{2}", "(a|b)*abb"])   # first reply uses forbidden { }
     received_messages = []
 
-    def fake_llm(system, message):
+    def fake_llm(system, message, max_tokens=None):
         received_messages.append(message)
         return next(replies)
 
@@ -103,7 +103,7 @@ def test_generate_regex_retries_after_invalid_reply(monkeypatch):
 
 
 def test_generate_regex_gives_up_after_max_attempts(monkeypatch):
-    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message: "not a regex!")
+    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message, max_tokens=None: "not a regex!")
     result = nl_to_regex.generate_regex("anything")
     assert result["regex"] is None
     assert len(result["attempts"]) == nl_to_regex.MAX_ATTEMPTS
@@ -185,3 +185,19 @@ def test_wrong_key_stops_immediately(fake_gemini):
     with pytest.raises(AIRequestError, match="key was rejected"):
         ask_llm("s", "m")
     assert fake_gemini["completions"].tried == ["gemini-3.8-flash"]
+
+
+def test_default_provider_is_free_gemini(monkeypatch):
+    from ai import llm_client
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    assert llm_client.get_provider() == "gemini"
+    assert llm_client.get_model() == llm_client.DEFAULT_MODELS["gemini"]
+
+
+def test_unsupported_provider_gives_clear_message(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")      # removed: only free providers now
+    monkeypatch.setenv("LLM_API_KEY", "x")
+    assert not is_configured()
+    with pytest.raises(AINotConfiguredError, match="not supported"):
+        ask_llm("system", "hello")

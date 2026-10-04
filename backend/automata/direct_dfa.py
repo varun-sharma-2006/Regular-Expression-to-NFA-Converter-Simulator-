@@ -46,7 +46,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from automata.parser import CONCAT, EPSILON, OPTIONAL, PLUS, STAR, UNION, is_operand
-from automata.subset import DEAD_STATE_NAME, DFA, make_state_name
+from automata.subset import DEAD_STATE_NAME, DFA, check_dfa_size, make_state_name
 
 END_MARKER = "#"
 
@@ -173,6 +173,7 @@ def build_direct_dfa(postfix: str) -> tuple[DFA, dict]:
                 names[position_set] = make_state_name(letter_count)
                 letter_count += 1
             order.append(position_set)
+            check_dfa_size(len(order))
             queue.append(position_set)
         return names[position_set]
 

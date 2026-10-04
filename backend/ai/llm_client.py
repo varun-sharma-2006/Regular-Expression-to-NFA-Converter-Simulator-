@@ -4,11 +4,14 @@ llm_client.py - the ONLY file that talks to an LLM provider.
 Every other AI file calls ask_llm(system_prompt, user_message) and gets text
 back, so switching provider means changing the .env file, not the code.
 
+The app uses a FREE AI: Google Gemini by default, with Groq as a free backup.
+Both offer an "OpenAI-compatible" API, so one piece of code (the `openai`
+package) talks to either of them; only the web address differs.
+
 Configuration (read from environment variables, loaded from backend/.env):
-    LLM_PROVIDER   "anthropic" (default), "gemini", "groq" or "openai"
-                   gemini and groq have FREE API keys and need no other setting.
-                   "openai" also works with any OpenAI-compatible server
-                   (OpenRouter, Ollama, ...) via LLM_BASE_URL.
+    LLM_PROVIDER   "gemini" (default, free) or "groq" (free).
+                   Advanced: "openai" for OpenAI itself or any other
+                   OpenAI-compatible server (e.g. Ollama) via LLM_BASE_URL.
     LLM_API_KEY    your secret key - NEVER written in the code
     LLM_MODEL      optional; a sensible default is used per provider
     LLM_BASE_URL   optional; only for other OpenAI-compatible servers
@@ -21,15 +24,15 @@ from __future__ import annotations
 
 import os
 
+DEFAULT_PROVIDER = "gemini"
+
 DEFAULT_MODELS = {
-    "anthropic": "claude-opus-5-5",
     "gemini": "gemini-3.8-flash",
     "groq": "llama-3.3-70b-versatile",
     "openai": "gpt-4o-mini",
 }
 
-# Gemini and Groq offer OpenAI-compatible endpoints, so the same client code
-# works for them; only the address differs.
+# The web address of each free provider's OpenAI-compatible API.
 PRESET_BASE_URLS = {
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
     "groq": "https://api.groq.com/openai/v1",
@@ -42,11 +45,12 @@ FALLBACK_MODELS = {
     "gemini": ["gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"],
 }
 
+# Seconds to wait for one answer. The deployed server (gunicorn) stops a
+# request after 120 s, and NL -> regex may ask up to 3 times, so 30 s each.
+REQUEST_TIMEOUT_SECONDS = 30
+
 # The model that answered the last request (shown by the "Test connection" button).
 last_model_used: str | None = None
-
-# Anthropic models that support the server-side refusal fallback option.
-_MODELS_WITH_FALLBACKS = ("claude-opus-5", "claude-fable-5", "claude-sonnet-5-5")
 
 
 class AINotConfiguredError(Exception):
@@ -58,7 +62,7 @@ class AIRequestError(Exception):
 
 
 def get_provider() -> str:
-    return os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+    return os.getenv("LLM_PROVIDER", "").strip().lower() or DEFAULT_PROVIDER
 
 
 def get_model() -> str:
@@ -68,69 +72,33 @@ def get_model() -> str:
     return DEFAULT_MODELS.get(get_provider(), "")
 
 
+def has_key() -> bool:
+    return os.getenv("LLM_API_KEY", "").strip() != ""
+
+
 def is_configured() -> bool:
     """True if a provider we support is chosen and an API key is present."""
-    has_key = os.getenv("LLM_API_KEY", "").strip() != ""
-    return has_key and get_provider() in DEFAULT_MODELS
+    return has_key() and get_provider() in DEFAULT_MODELS
 
 
-def ask_llm(system_prompt: str, user_message: str, max_tokens: int = 16000) -> str:
+def ask_llm(system_prompt: str, user_message: str, max_tokens: int = 2000) -> str:
     """
     Send one question to the configured LLM and return its text answer.
+    `max_tokens` caps the length of the answer; callers pass a size that
+    fits what they ask for.
     Raises AINotConfiguredError or AIRequestError on problems.
     """
+    if has_key() and get_provider() not in DEFAULT_MODELS:
+        raise AINotConfiguredError(
+            f"LLM_PROVIDER '{get_provider()}' in backend/.env is not supported. "
+            "Use gemini or groq (both free): click the AI badge at the top right."
+        )
     if not is_configured():
         raise AINotConfiguredError(
             "AI is not configured: LLM_API_KEY in backend/.env is empty. Click the "
             "AI badge at the top right for the setup steps. Everything else still works."
         )
-    provider = get_provider()
-    if provider == "anthropic":
-        return _ask_anthropic(system_prompt, user_message, max_tokens)
     return _ask_openai_compatible(system_prompt, user_message, max_tokens)
-
-
-def _ask_anthropic(system_prompt: str, user_message: str, max_tokens: int) -> str:
-    """Call Claude with the official `anthropic` SDK."""
-    import anthropic  # imported here so the app runs even if it isn't installed
-
-    client = anthropic.Anthropic(api_key=os.getenv("LLM_API_KEY"))
-    model = get_model()
-    request = {
-        "model": model,
-        "max_tokens": max_tokens,
-        "system": system_prompt,
-        "messages": [{"role": "user", "content": user_message}],
-    }
-    try:
-        if model.startswith(_MODELS_WITH_FALLBACKS):
-            # If the model declines a request, the API retries it on a
-            # suitable fallback model inside the same call.
-            response = client.beta.messages.create(
-                **request,
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            )
-        else:
-            response = client.messages.create(**request)
-    except anthropic.AuthenticationError:
-        raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
-    except anthropic.RateLimitError:
-        raise AIRequestError("Rate limit reached. Wait a moment and try again.")
-    except anthropic.APIConnectionError:
-        raise AIRequestError("Could not reach the AI provider. Check your internet connection.")
-    except anthropic.APIStatusError as error:
-        raise AIRequestError(f"AI provider error ({error.status_code}): {error.message}")
-
-    if response.stop_reason == "refusal":
-        raise AIRequestError("The AI declined this request.")
-
-    # The answer is a list of content blocks; we keep only the text blocks.
-    parts = []
-    for block in response.content:
-        if block.type == "text":
-            parts.append(block.text)
-    return "".join(parts).strip()
 
 
 def models_to_try() -> list[str]:
@@ -153,7 +121,12 @@ def _ask_openai_compatible(system_prompt: str, user_message: str, max_tokens: in
     base_url = os.getenv("LLM_BASE_URL", "").strip() or PRESET_BASE_URLS.get(get_provider())
     # No automatic retries of the SAME model: free keys allow very few
     # requests per minute, so we move on to the next model instead.
-    client = openai.OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=base_url, max_retries=0)
+    client = openai.OpenAI(
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=base_url,
+        max_retries=0,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
 
     problems = []   # what went wrong with each model, for the final message
     for model in models_to_try():

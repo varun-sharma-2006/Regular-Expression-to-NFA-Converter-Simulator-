@@ -11,10 +11,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <!-- Cytoscape.js draws the graphs; dagre gives a left-to-right layout. -->
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+  <!-- Cytoscape.js draws the graphs; dagre gives a left-to-right layout.
+       Kept in vendor/ (cytoscape 3.30.2, dagre 0.8.5, cytoscape-dagre 2.5.0)
+       so the graphs work without internet, e.g. in a viva room. -->
+  <script src="vendor/cytoscape.min.js"></script>
+  <script src="vendor/dagre.min.js"></script>
+  <script src="vendor/cytoscape-dagre.js"></script>
   <!-- Apply the saved theme before the page is drawn (avoids a white flash). -->
   <script>
     try {
@@ -439,15 +441,13 @@
   <ol class="setup-steps">
     <li><b>Get a free API key</b> (no credit card):
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google Gemini</a> or
-      <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a>.
-      Claude and OpenAI keys work too.</li>
+      <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a>
+      (Groq is a good backup if Gemini is busy).</li>
     <li><b>Paste it here</b> and click <b>Save &amp; test</b>. The key is saved in <code>backend/.env</code> on this computer.
       <div class="key-form">
         <select id="ai-provider">
           <option value="gemini">Google Gemini (free)</option>
           <option value="groq">Groq (free)</option>
-          <option value="anthropic">Anthropic Claude</option>
-          <option value="openai">OpenAI</option>
         </select>
         <input id="ai-key" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false">
         <button id="ai-save-button">Save &amp; test</button>

@@ -13,6 +13,7 @@ import app as app_module
 def client(monkeypatch):
     monkeypatch.delenv("LLM_API_KEY", raising=False)   # start with AI switched off
     app_module.app.config["TESTING"] = True
+    app_module.ai_request_times.clear()                 # every test starts with no AI requests
     return app_module.app.test_client()
 
 
@@ -116,7 +117,7 @@ def test_builtin_explainer_survives_bad_data(client):
 
 def test_nl_to_regex_with_fake_llm(client, monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "fake-key-for-tests")
-    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message: "(a|b)*abb")
+    monkeypatch.setattr(nl_to_regex, "ask_llm", lambda system, message, max_tokens=None: "(a|b)*abb")
     data = client.post("/api/ai/nl-to-regex", json={"description": "ends with abb"}).get_json()
     assert data["regex"] == "(a|b)*abb"
     assert len(data["pipeline"]["min_dfa"]["states"]) == 4
@@ -197,7 +198,7 @@ def test_ai_test_route_without_key(client):
 
 def test_ai_test_route_with_fake_llm(client, monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "fake-key-for-tests")
-    monkeypatch.setattr(app_module, "ask_llm", lambda system, message: "OK")
+    monkeypatch.setattr(app_module, "ask_llm", lambda system, message, max_tokens=None: "OK")
     data = client.post("/api/ai/test").get_json()
     assert data["ok"] is True and data["reply"] == "OK"
 
@@ -211,3 +212,67 @@ def test_free_provider_presets(monkeypatch, provider):
     assert llm_client.is_configured()
     assert llm_client.get_model() == llm_client.DEFAULT_MODELS[provider]
     assert provider in llm_client.PRESET_BASE_URLS
+
+
+# ---------------------------------------------------------------------------
+# Server protection: automaton size limit, AI rate limit, pipeline cache
+# ---------------------------------------------------------------------------
+
+def test_exponential_regex_is_refused_with_a_clear_message(client):
+    response = client.post("/api/convert", json={"regex": "(a|b)*a" + "(a|b)" * 9})
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["too_large"] is True
+    assert "300 DFA states" in data["error"]
+
+
+def test_too_large_operation_gives_400(client):
+    response = client.post("/api/operations", json={
+        "regex1": "(a|b)*a" + "(a|b)" * 6, "regex2": "(b*ab*ab*a)*b*", "operation": "intersection",
+    })
+    assert response.status_code == 400
+    assert "300 DFA states" in response.get_json()["error"]
+
+
+@pytest.fixture
+def fake_ai(client, monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "fake-key-for-tests")
+    monkeypatch.setattr(app_module, "ask_llm", lambda system, message, max_tokens=None: "OK")
+    monkeypatch.setattr(app_module, "AI_REQUESTS_PER_MINUTE", 2)
+    return client
+
+
+def test_ai_requests_are_rate_limited_per_visitor(fake_ai):
+    visitor = {"REMOTE_ADDR": "203.0.113.5"}
+    codes = [fake_ai.post("/api/ai/test", environ_base=visitor).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+    # Another visitor has their own allowance.
+    assert fake_ai.post("/api/ai/test", environ_base={"REMOTE_ADDR": "203.0.113.6"}).status_code == 200
+
+
+def test_requests_from_this_computer_are_not_rate_limited(fake_ai):
+    codes = {fake_ai.post("/api/ai/test").status_code for _ in range(5)}
+    assert codes == {200}
+
+
+def test_builtin_explanations_are_not_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(app_module, "AI_REQUESTS_PER_MINUTE", 1)
+    visitor = {"REMOTE_ADDR": "203.0.113.7"}
+    for _ in range(3):
+        response = client.post("/api/ai/explain", json={"stage": "dfa", "data": {}}, environ_base=visitor)
+        assert response.status_code == 200
+
+
+def test_simulate_reuses_the_built_automata(client, monkeypatch):
+    calls = []
+    real_pipeline = app_module.run_pipeline
+
+    def counting_pipeline(regex):
+        calls.append(regex)
+        return real_pipeline(regex)
+
+    monkeypatch.setattr(app_module, "run_pipeline", counting_pipeline)
+    app_module.cached_pipeline.cache_clear()
+    for text in ("abb", "aabb", "ab"):
+        client.post("/api/simulate", json={"regex": "(a|b)*abb", "string": text})
+    assert calls == ["(a|b)*abb"]

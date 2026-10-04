@@ -25,7 +25,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Callable
 
-from automata.subset import DEAD_STATE_NAME, DFA, make_state_name
+from automata.subset import DEAD_STATE_NAME, DFA, check_dfa_size, make_state_name
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +96,7 @@ def build_product(
             if next_pair not in names:
                 names[next_pair] = make_state_name(len(order))
                 order.append(next_pair)
+                check_dfa_size(len(order))
                 queue.append(next_pair)
             transitions[names[pair]][symbol] = names[next_pair]
 

@@ -93,7 +93,7 @@ This gives 5 states, the same as the textbook (Aho–Ullman). No dead state is n
 ### Viva questions
 1. **Why "subset" construction?** An NFA can be in many states at once. Each DFA state represents the *set* of NFA states the NFA could be in.
 2. **What is the ε-closure?** All states reachable using only ε-moves, including the state itself. It is computed with DFS or BFS.
-3. **What is the worst case?** 2ⁿ DFA states for n NFA states. For example, `(a|b)*a(a|b)(a|b)…` needs about 2ᵏ states. That's why app.py limits regex length.
+3. **What is the worst case?** 2ⁿ DFA states for n NFA states. For example, `(a|b)*a(a|b)(a|b)…` needs about 2ᵏ states. That's why every DFA construction stops at 300 states (`MAX_DFA_STATES` in subset.py) with a friendly message. A length limit alone is not enough: `(a|b)*a` followed by eight `(a|b)` is under 50 characters but needs 512 states.
 4. **What is the dead state and why add it?** It is the empty set of NFA states. It makes the DFA *complete* (one move for every symbol), which the table-filling algorithm and the equivalence check need.
 5. **Which DFA states are accepting?** Those whose NFA set contains the NFA's accept state, because the NFA *could* be in an accepting state.
 
@@ -164,7 +164,7 @@ BFS tries ε, a, b, aa, ab… For `ab`, the first DFA is in a non-accepting stat
 1. **Why are the algorithms in Python and not JavaScript?** The algorithms stay in one place, are tested with pytest, and the frontend stays a simple display layer (separation of concerns).
 2. **What does a request look like?** `POST /api/convert {"regex": "(a|b)*abb"}` returns the JSON for every stage.
 3. **How is the animation done?** The backend returns the path. Next/Play move an index through it, and render.js adds CSS classes to the current node and the edge just taken.
-4. **What stops the server from hanging?** The regex length limit (100 characters), because subset construction can blow up exponentially.
+4. **What stops the server from hanging?** Every DFA construction (subset, direct and product) stops at 300 states, because subset construction can blow up exponentially. The 100-character length limit is a second guard. AI routes are also rate-limited per visitor, and a regex's automata are cached so testing many strings does not rebuild them.
 
 ---
 
