@@ -43,6 +43,7 @@ from ai.llm_client import (                                   # noqa: E402
     get_provider,
     is_configured,
 )
+from ai import llm_client                                     # noqa: E402
 from ai.nl_to_regex import generate_regex                     # noqa: E402
 from ai.settings_file import InvalidSettingsError, save_ai_settings  # noqa: E402
 from ai.verifier import verify_regex                          # noqa: E402
@@ -235,7 +236,8 @@ def ai_configure():
 def ai_test():
     """Check the key and the connection with a very small question."""
     reply = ask_llm("You are a connection test. Reply with exactly the word OK.", "ping")
-    return jsonify({"ok": True, "provider": get_provider(), "model": get_model(), "reply": reply[:200]})
+    model = llm_client.last_model_used or get_model()
+    return jsonify({"ok": True, "provider": get_provider(), "model": model, "reply": reply[:200]})
 
 
 @app.get("/api/ai/status")

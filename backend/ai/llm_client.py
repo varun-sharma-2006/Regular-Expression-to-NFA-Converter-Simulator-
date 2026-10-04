@@ -35,6 +35,16 @@ PRESET_BASE_URLS = {
     "groq": "https://api.groq.com/openai/v1",
 }
 
+# If a model is busy (503), over its free limit (429) or retired (404), the
+# next model in this list is tried automatically. Every Gemini model has its
+# OWN free-tier limit, so falling back also gives more free requests.
+FALLBACK_MODELS = {
+    "gemini": ["gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"],
+}
+
+# The model that answered the last request (shown by the "Test connection" button).
+last_model_used: str | None = None
+
 # Anthropic models that support the server-side refusal fallback option.
 _MODELS_WITH_FALLBACKS = ("claude-opus-5", "claude-fable-5", "claude-sonnet-5-5")
 
@@ -123,43 +133,61 @@ def _ask_anthropic(system_prompt: str, user_message: str, max_tokens: int) -> st
     return "".join(parts).strip()
 
 
+def models_to_try() -> list[str]:
+    """The configured model first, then the provider's fallback models (no duplicates)."""
+    models = [get_model()]
+    for model in FALLBACK_MODELS.get(get_provider(), []):
+        if model not in models:
+            models.append(model)
+    return models
+
+
 def _ask_openai_compatible(system_prompt: str, user_message: str, max_tokens: int) -> str:
-    """Call any OpenAI-compatible chat completions API with the `openai` SDK."""
+    """
+    Call any OpenAI-compatible chat completions API with the `openai` SDK.
+    If a model is busy, over its limit or retired, try the next fallback model.
+    """
+    global last_model_used
     import openai
 
     base_url = os.getenv("LLM_BASE_URL", "").strip() or PRESET_BASE_URLS.get(get_provider())
-    # Only 1 automatic retry: free keys allow very few requests per minute,
-    # and every retry counts against that limit.
-    client = openai.OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=base_url, max_retries=1)
-    try:
-        response = client.chat.completions.create(
-            model=get_model(),
-            max_tokens=max_tokens,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-        )
-    except openai.AuthenticationError:
-        raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
-    except openai.RateLimitError:
-        raise AIRequestError(
-            "Request limit reached. Free keys allow only a few AI requests per minute "
-            "(Gemini free tier: about 5). Wait one minute and try again."
-        )
-    except openai.InternalServerError:
-        raise AIRequestError("The AI service is busy right now (high demand). Try again in a moment.")
-    except openai.APIConnectionError:
-        raise AIRequestError("Could not reach the AI provider. Check LLM_BASE_URL / internet.")
-    except openai.APIError as error:
-        # Some providers (e.g. Gemini) report a wrong key as a generic 400 error.
-        if "api key" in str(error).lower() or "api_key" in str(error).lower():
-            raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
-        # Providers retire old models; say clearly how to pick another one.
-        if getattr(error, "status_code", None) == 404 or "not_found" in str(error).lower():
-            raise AIRequestError(
-                f"The model '{get_model()}' is not available for your key. Set LLM_MODEL in "
-                f"backend/.env to a current model name (see the provider's model list). Details: {error}"
+    # No automatic retries of the SAME model: free keys allow very few
+    # requests per minute, so we move on to the next model instead.
+    client = openai.OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=base_url, max_retries=0)
+
+    problems = []   # what went wrong with each model, for the final message
+    for model in models_to_try():
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
             )
-        raise AIRequestError(f"AI provider error: {error}")
-    return (response.choices[0].message.content or "").strip()
+            last_model_used = model
+            return (response.choices[0].message.content or "").strip()
+        except openai.AuthenticationError:
+            raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
+        except openai.APIConnectionError:
+            raise AIRequestError("Could not reach the AI provider. Check your internet connection.")
+        except openai.RateLimitError:
+            problems.append(f"{model}: request limit reached")
+        except openai.InternalServerError:
+            problems.append(f"{model}: busy (high demand)")
+        except openai.APIError as error:
+            text = str(error).lower()
+            # Some providers (e.g. Gemini) report a wrong key as a generic 400 error.
+            if "api key" in text or "api_key" in text:
+                raise AIRequestError("The API key was rejected. Check LLM_API_KEY in backend/.env.")
+            if getattr(error, "status_code", None) == 404 or "not_found" in text:
+                problems.append(f"{model}: not available for this key")
+                continue
+            raise AIRequestError(f"AI provider error: {error}")
+
+    raise AIRequestError(
+        "All AI models are busy or over the free limit right now ("
+        + "; ".join(problems)
+        + "). Wait one minute and try again."
+    )

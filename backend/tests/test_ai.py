@@ -107,3 +107,81 @@ def test_generate_regex_gives_up_after_max_attempts(monkeypatch):
     result = nl_to_regex.generate_regex("anything")
     assert result["regex"] is None
     assert len(result["attempts"]) == nl_to_regex.MAX_ATTEMPTS
+
+
+# ---------------------------------------------------------------------------
+# Model fallback (fake OpenAI client, no network)
+# ---------------------------------------------------------------------------
+
+class _FakeCompletions:
+    def __init__(self, failures):
+        self.failures = failures      # model name -> exception to raise
+        self.tried = []
+
+    def create(self, model, **kwargs):
+        self.tried.append(model)
+        if model in self.failures:
+            raise self.failures[model]
+        message = type("Message", (), {"content": f"answer from {model}"})
+        choice = type("Choice", (), {"message": message})
+        return type("Response", (), {"choices": [choice]})
+
+
+def _openai_error(cls, status):
+    import httpx2 as httpx   # the HTTP library used by the openai SDK
+    import openai
+    request = httpx.Request("POST", "https://example.test")
+    return cls("boom", response=httpx.Response(status, request=request), body=None)
+
+
+@pytest.fixture
+def fake_gemini(monkeypatch):
+    import openai
+    from ai import llm_client
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("LLM_API_KEY", "x")
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    holder = {}
+
+    def make_client(**kwargs):
+        client = type("Client", (), {})()
+        client.chat = type("Chat", (), {})()
+        client.chat.completions = holder["completions"]
+        return client
+
+    monkeypatch.setattr(openai, "OpenAI", make_client)
+    return holder
+
+
+def test_busy_model_falls_back_to_next(fake_gemini):
+    import openai
+    from ai import llm_client
+    fake_gemini["completions"] = _FakeCompletions({
+        "gemini-3.8-flash": _openai_error(openai.InternalServerError, 503),
+        "gemini-3.7-flash": _openai_error(openai.RateLimitError, 429),
+    })
+    assert ask_llm("s", "m") == "answer from gemini-3.5-flash"
+    assert llm_client.last_model_used == "gemini-3.5-flash"
+    assert fake_gemini["completions"].tried == ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
+
+
+def test_all_models_busy_gives_clear_message(fake_gemini):
+    import openai
+    from ai.llm_client import AIRequestError, models_to_try
+    fake_gemini["completions"] = _FakeCompletions(
+        {model: _openai_error(openai.InternalServerError, 503) for model in models_to_try()}
+    )
+    with pytest.raises(AIRequestError) as error_info:
+        ask_llm("s", "m")
+    assert "Wait one minute" in str(error_info.value)
+
+
+def test_wrong_key_stops_immediately(fake_gemini):
+    import openai
+    from ai.llm_client import AIRequestError
+    fake_gemini["completions"] = _FakeCompletions(
+        {"gemini-3.8-flash": _openai_error(openai.AuthenticationError, 401)}
+    )
+    with pytest.raises(AIRequestError, match="key was rejected"):
+        ask_llm("s", "m")
+    assert fake_gemini["completions"].tried == ["gemini-3.8-flash"]
