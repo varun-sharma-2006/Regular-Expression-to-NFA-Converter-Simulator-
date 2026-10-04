@@ -280,10 +280,21 @@ async function copyShareLink() {
 async function openAiDialog() {
   await checkAiStatus();   // main.js: refreshes aiConfigured and the badge
   $("ai-dialog-status").textContent = aiConfigured
-    ? "AI is configured: " + $("ai-status").textContent.replace("AI: ", "") + ". Use \"Test connection\" to check the key."
+    ? "✔ AI is on (" + $("ai-status").textContent.replace("AI: on (", "").replace(")", "") + "). " +
+      "Your key is saved, so you never need to paste it again, even after a restart. " +
+      "Use \"Test connection\" to check it."
     : "AI is not configured yet. Everything else works without it. Two quick steps to enable it:";
+  // With a saved key, hide the setup steps; "Use a different key" shows them again.
+  $("ai-setup").classList.toggle("hidden", aiConfigured);
+  $("ai-change-key").classList.toggle("hidden", !aiConfigured);
   $("ai-test-result").textContent = "";
   $("ai-dialog").showModal();
+}
+
+function showAiSetup() {
+  show($("ai-setup"));
+  hide($("ai-change-key"));
+  $("ai-key").focus();
 }
 
 /** Save the pasted key into backend/.env (through the server), then test it. */
@@ -350,6 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("ai-dialog-close").addEventListener("click", () => $("ai-dialog").close());
   $("ai-test-button").addEventListener("click", testAiConnection);
   $("ai-save-button").addEventListener("click", saveAiKey);
+  $("ai-change-key").addEventListener("click", showAiSetup);
   $("ai-key").addEventListener("keydown", (e) => { if (e.key === "Enter") saveAiKey(); });
   $("share-button").addEventListener("click", copyShareLink);
 });
